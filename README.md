@@ -6,7 +6,7 @@ P&C Insurance NLQ platform that transforms natural language questions into expla
 
 ## Overview
 
-This project demonstrates how Knowledge Graphs can improve enterprise insurance analytics by enabling:
+This project demonstrates how Knowledge Graphs can improve insurance analytics by enabling:
 
 * Semantic schema understanding
 * Dynamic join discovery
