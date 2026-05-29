@@ -1,17 +1,59 @@
 # P&C Insurance NLQ Chatbot — Dependencies
 # Install: pip install -r requirements.txt
 
+# =========================
 # Core LLM / Azure OpenAI
+# =========================
 openai>=1.30.0
 
-# Neo4j graph database
+# =========================
+# Neo4j Graph Database
+# =========================
 neo4j>=5.20.0
 
+# =========================
 # Streamlit UI
+# =========================
 streamlit>=1.35.0
 
-# Data
+# =========================
+# Data Processing
+# =========================
 pandas>=2.0.0
+numpy>=1.26.0
 
-# Environment
+# =========================
+# Environment Variables
+# =========================
 python-dotenv>=1.0.0
+
+# =========================
+# KG Visualization
+# =========================
+pyvis>=0.3.2
+networkx>=3.3
+plotly>=5.22.0
+
+# =========================
+# Embeddings / Semantic Search
+# =========================
+sentence-transformers>=2.7.0
+scikit-learn>=1.5.0
+
+# =========================
+# Utilities
+# =========================
+requests>=2.32.0
+tqdm>=4.66.0
+
+# =========================
+# Optional Streamlit Enhancements
+# =========================
+streamlit-option-menu>=0.3.12
+streamlit-aggrid>=1.0.5
+
+# =========================
+# HTML Parsing / Rendering
+# =========================
+beautifulsoup4>=4.12.3
+lxml>=5.2.2
