@@ -1,4 +1,4 @@
-# Claims Lifecycle Knowledge Graph
+# Graph Query Language
 
 P&C Insurance NLQ platform that transforms natural language questions into explainable SQL using Neo4j Knowledge Graphs, semantic retrieval, and LLM-based reasoning.
 
