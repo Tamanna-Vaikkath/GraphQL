@@ -1,8 +1,48 @@
 command:
-  - streamlit
-  - run
-  - app.py
-  - --server.port
+  - "streamlit"
+  - "run"
+  - "app.py"
+  - "--server.port"
   - "8000"
-  - --server.address
+  - "--server.address"
   - "0.0.0.0"
+
+env:
+  - name: OPENAI_DEPLOYMENT_ENDPOINT
+    valueFrom: openai-deployment-endpoint
+
+  - name: OPENAI_API_KEY
+    valueFrom: openai-api-key
+
+  - name: OPENAI_API_VERSION
+    valueFrom: openai-api-version
+
+  - name: OPENAI_DEPLOYMENT_NAME
+    valueFrom: openai-deployment-name
+
+  - name: OPENAI_MODEL_NAME
+    valueFrom: openai-model-name
+
+  - name: OPENAI_EMBEDDING_ENDPOINT
+    valueFrom: openai-embedding-endpoint
+
+  - name: OPENAI_EMBEDDING_API_KEY
+    valueFrom: openai-embedding-api-key
+
+  - name: OPENAI_EMBEDDING_MODEL
+    valueFrom: openai-embedding-model
+
+  - name: OPENAI_EMBEDDING_DEPLOYMENT
+    valueFrom: openai-embedding-deployment
+
+  - name: NEO4J_URI
+    valueFrom: neo4j-uri
+
+  - name: NEO4J_USERNAME
+    valueFrom: neo4j-username
+
+  - name: NEO4J_PASSWORD
+    valueFrom: neo4j-password
+
+  - name: NEO4J_DATABASE
+    valueFrom: neo4j-database
