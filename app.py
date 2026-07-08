@@ -1,5 +1,5 @@
 """
-app.py — Streamlit Chatbot UI for Graph QL System.
+app.py — Streamlit UI for Query Intelligence System.
 
 Features:
   - Natural language input box
@@ -12,6 +12,7 @@ Features:
 Run:
     streamlit run app.py
 """
+import html
 import logging
 import os
 import re
@@ -34,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Graph QL Chatbot",
+    page_title="Query Intelligence System",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -86,8 +87,106 @@ st.markdown("""
     }
     .success-badge { color: #28a745; font-weight: bold; }
     .error-badge   { color: #dc3545; font-weight: bold; }
+
+    /* ── Repair-agent before/after trace ───────────────────────────────── */
+    .repair-sql-box {
+        padding: 1rem;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.82rem;
+        white-space: pre-wrap;
+        margin-bottom: 0.4rem;
+    }
+    .repair-sql-before {
+        background: #2a1414;
+        color: #f5c6c6;
+        border-left: 4px solid #dc3545;
+    }
+    .repair-sql-after {
+        background: #14261a;
+        color: #c6f5d4;
+        border-left: 4px solid #28a745;
+    }
+    .repair-diff-box {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 1rem;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.8rem;
+        white-space: pre-wrap;
+        border-left: 4px solid #f0ad4e;
+        margin-bottom: 0.4rem;
+    }
+    .repair-error-box {
+        background: #2a1414;
+        color: #ffb3b3;
+        padding: 0.7rem 1rem;
+        border-radius: 6px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.82rem;
+        white-space: pre-wrap;
+        border-left: 4px solid #dc3545;
+        margin-bottom: 0.4rem;
+    }
+    .repair-note-pass { color: #28a745; }
+    .repair-note-fail { color: #dc3545; }
     /* Hide the native "Press Enter to apply" tooltip on text inputs */
     [data-testid="InputInstructions"] { display: none !important; }
+
+    /* ── Cypher / Knowledge Graph lane ─────────────────────────────────── */
+    .cypher-box {
+        background: #1e1b2e;
+        color: #e5d9ff;
+        padding: 1rem;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+        border-left: 4px solid #8b5cf6;
+    }
+    .lane-pill {
+        display: inline-block; border-radius: 999px; padding: 3px 14px;
+        font-size: 0.82rem; font-weight: 700; letter-spacing: 0.02em;
+    }
+    .lane-pill-sql    { background:#dbeafe; color:#1e3a8a; border:1px solid #93c5fd; }
+    .lane-pill-cypher { background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; }
+
+    /* ── Swim-lane diagram ──────────────────────────────────────────────── */
+    .swimlane-wrap {
+        border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.9rem 1rem 1rem;
+        margin: 0.6rem 0 1rem; background: #fbfdff;
+    }
+    .swimlane-title {
+        font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.06em; color: #64748b; margin-bottom: 6px;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .lane-row {
+        display: flex; align-items: center; gap: 0; margin: 6px 0;
+        padding: 8px 10px; border-radius: 8px; transition: all 0.2s ease;
+    }
+    .lane-row-active   { background: rgba(59,130,246,0.06); }
+    .lane-row-active.cypher-active { background: rgba(139,92,246,0.07); }
+    .lane-row-inactive { opacity: 0.42; filter: grayscale(35%); }
+    .lane-name {
+        min-width: 150px; font-size: 0.82rem; font-weight: 700; color: #334155;
+        display:flex; align-items:center; gap:6px;
+    }
+    .lane-steps { display: flex; align-items: center; flex-wrap: wrap; gap: 0; flex: 1; }
+    .lane-step {
+        font-size: 0.74rem; font-weight: 600; padding: 5px 11px; border-radius: 999px;
+        white-space: nowrap; color: #1e293b; background: #eef2f7; border: 1px solid #dbe3ec;
+    }
+    .lane-row-active .lane-step { background:#3b82f6; color:#fff; border-color:#2563eb; }
+    .lane-row-active.cypher-active .lane-step { background:#8b5cf6; color:#fff; border-color:#7c3aed; }
+    .lane-arrow { color: #94a3b8; margin: 0 6px; font-size: 0.8rem; }
+    .lane-row-active .lane-arrow { color: #2563eb; }
+    .lane-row-active.cypher-active .lane-arrow { color: #7c3aed; }
+    .lane-reason {
+        margin-top: 8px; font-size: 0.82rem; color: #475569;
+        background: #f8fafc; border-left: 3px solid #cbd5e1; padding: 6px 10px; border-radius: 4px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -142,7 +241,8 @@ with st.sidebar:
                            help="Reveal HyDE expansion, retrieved columns, and generated SQL.")
 
     st.divider()
-    st.markdown("#### Sample Queries")
+    st.markdown("#### Sample Queries — SQL lane")
+    st.caption("Filters, aggregations, fixed-depth joins")
     _SAMPLE_QUERIES = [
         "show open claims",
         "show denied claims",
@@ -154,6 +254,20 @@ with st.sidebar:
     for _sq in _SAMPLE_QUERIES:
         if st.button(_sq, key=f"sq_{_sq}", use_container_width=True):
             st.session_state["pending_query"] = _sq
+            st.session_state["run_sample"] = True
+            st.rerun()
+
+    st.markdown("#### Sample Queries — Cypher / KG lane")
+    st.caption("Relationships, multi-hop, unknown-depth traversal")
+    _SAMPLE_CYPHER_QUERIES = [
+        "which claimants share the same policy as another claimant",
+        "find claims connected through the same adjuster",
+        "show the chain of payments across a claimant's claims",
+        "which policies are linked through the same agent",
+    ]
+    for _cq in _SAMPLE_CYPHER_QUERIES:
+        if st.button(_cq, key=f"cq_{_cq}", use_container_width=True):
+            st.session_state["pending_query"] = _cq
             st.session_state["run_sample"] = True
             st.rerun()
 
@@ -173,7 +287,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.caption("Graph QL  ·  Neo4j + Azure OpenAI")
+    st.caption("Query Intelligence  ·  Neo4j + Azure OpenAI")
     if st.session_state.get("config_ok"):
         st.caption("Connected")
     else:
@@ -185,7 +299,7 @@ st.markdown(f"""
 <div class="main-header">
     {_logo_tag}
     <div class="main-header-text">
-        <h2>Graph QL Chatbot</h2>
+        <h2>Query Intelligence System</h2>
         <p>Ask questions about Claims, Policies, Payments, and Claimants...</p>
     </div>
 </div>
@@ -1089,7 +1203,7 @@ elif st.session_state.get("schema_grounding_error"):
 # ── Irrelevant query message ──────────────────────────────────────────────────
 elif st.session_state.get("irrelevant_query"):
     st.warning(
-"Hello! I am a specialized Insurance Graph QL assistant designed to help you explore and analyze insurance-related data. "
+"Hello! I am a specialized Insurance assistant designed to help you explore and analyze insurance-related data. "
 "I can assist with information related to Claims, Policies, Payments, Claimants, and other connected insurance insights. "
 "At the moment, I am not designed to answer general-purpose questions outside this domain. "
 "For best results, please ask specific insurance-related questions so I can accurately query the database and retrieve meaningful insights. "
@@ -2210,9 +2324,138 @@ def _generate_table_summary(df: pd.DataFrame, question: str, pipeline_summary: s
     return " ".join(summary_parts)
 
 
+# ── Repair-agent trace renderer ────────────────────────────────────────────────
+def _render_sql_repair_trace(repair_detail: list, full_trace: str = "") -> None:
+    """Render the full self-healing repair trace for the SQL lane: one
+    expandable block per repair cycle, each showing exactly what failed,
+    why, what the repair agent changed, and whether that fix was accepted —
+    plus a clear Before (failing SQL) / After (repaired SQL) comparison.
+    """
+    if not repair_detail:
+        return
+
+    st.markdown(f"**Repair Trace — {len(repair_detail)} repair cycle(s) run:**")
+
+    for ra in repair_detail:
+        passed = getattr(ra, "validation_passed", True)
+        terminated = getattr(ra, "terminated_retries", False)
+        status_icon = "🛑" if terminated else ("✅" if passed else "⚠️")
+        status_text = (
+            "stopped retry loop" if terminated
+            else ("fix accepted, retrying" if passed else "fix rejected by validation")
+        )
+
+        with st.expander(
+            f"{status_icon} Repair cycle #{ra.attempt_number} — {status_text}",
+            expanded=terminated,
+        ):
+            st.markdown("**What failed:**")
+            st.markdown(
+                f"<div class='repair-error-box'>{html.escape(ra.error)}</div>",
+                unsafe_allow_html=True,
+            )
+
+            col_before, col_after = st.columns(2)
+            with col_before:
+                st.markdown("**Before — failing SQL:**")
+                st.markdown(
+                    f"<div class='repair-sql-box repair-sql-before'>"
+                    f"{html.escape(ra.failing_sql)}</div>",
+                    unsafe_allow_html=True,
+                )
+            with col_after:
+                st.markdown("**After — repaired SQL:**")
+                st.markdown(
+                    f"<div class='repair-sql-box repair-sql-after'>"
+                    f"{html.escape(ra.repaired_sql or '(empty response)')}</div>",
+                    unsafe_allow_html=True,
+                )
+
+            st.markdown("**What changed (diff):**")
+            st.markdown(
+                f"<div class='repair-diff-box'>"
+                f"{html.escape(ra.sql_diff or '(no diff — SQL unchanged)')}</div>",
+                unsafe_allow_html=True,
+            )
+
+            st.markdown("**Validation:**")
+            for note in getattr(ra, "validation_notes", []):
+                css = "repair-note-pass" if passed else "repair-note-fail"
+                st.markdown(f"<span class='{css}'>• {html.escape(note)}</span>",
+                            unsafe_allow_html=True)
+            if terminated:
+                st.error(f"Retry loop stopped: {ra.termination_reason}")
+
+            with st.expander("Exact prompt sent to the repair LLM"):
+                st.markdown("*System prompt:*")
+                st.code(ra.repair_system_prompt, language="text")
+                st.markdown("*User prompt:*")
+                st.code(ra.repair_user_prompt, language="text")
+
+    if full_trace:
+        with st.expander("Full raw repair trace (text report)"):
+            st.code(full_trace, language="text")
+
+
 # ── Trace panel renderer ──────────────────────────────────────────────────────
+def _render_cypher_trace_panel(last_r, last_q: str) -> None:
+    """Query Trace expander for the Cypher / Knowledge Graph lane."""
+    with st.expander("Query Trace", expanded=True):
+        t = last_r.trace
+
+        st.markdown("**Stage -1 — Swim-lane Routing:**")
+        col_a, col_b = st.columns([1, 3])
+        with col_a:
+            st.markdown(
+                f"<div class='metric-card'><b>Lane</b><br>Cypher / Knowledge Graph</div>",
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f"<div class='metric-card'><b>Method</b><br>{getattr(t, 'route_method', '—')}</div>",
+                unsafe_allow_html=True,
+            )
+        with col_b:
+            st.markdown(
+                f"<div class='metric-card'><b>Reason</b><br>{getattr(t, 'route_reason', '—')}</div>",
+                unsafe_allow_html=True,
+            )
+
+        st.divider()
+
+        st.markdown("**Stage 1 — Graph Schema Grounding:**")
+        st.caption(
+            "Business Knowledge Graph in Neo4j: "
+            "(:Claimant)-[:FILED]->(:Claim)-[:COVERED_BY]->(:Policy), "
+            "(:Claim)-[:HAS_PAYMENT]->(:Payment), plus SAME_ADJUSTER_AS / "
+            "SAME_AGENT_AS relationship edges for multi-hop questions."
+        )
+
+        st.markdown("**Live Traversal Graph (Knowledge Graph):**")
+        _render_kg_traversal_graph(t.generated_cypher or "", height=420)
+
+        st.markdown(
+            f"**Stage 2+3 — Generated & Executed Cypher** "
+            f"(repair attempts: {getattr(t, 'cypher_repair_attempts', 0)}):"
+        )
+        st.markdown(
+            f"<div class='cypher-box'>{t.generated_cypher}</div>",
+            unsafe_allow_html=True,
+        )
+
+        if getattr(t, "cypher_repair_history", None):
+            st.markdown("**Repair History:**")
+            for i, r in enumerate(t.cypher_repair_history, 1):
+                with st.expander(f"Attempt {i} failed"):
+                    st.code(r.get("cypher", ""), language="cypher")
+                    st.error(r.get("error", ""))
+
+
 def _render_trace_panel(last_r, last_q: str) -> None:
     """Render the full Query Trace expander for one QueryResult."""
+    if getattr(last_r.trace, "lane", "SQL") == "CYPHER":
+        _render_cypher_trace_panel(last_r, last_q)
+        return
+
     with st.expander("Query Trace", expanded=True):
         t = last_r.trace
 
@@ -2309,9 +2552,187 @@ def _render_trace_panel(last_r, last_q: str) -> None:
             f"(repair attempts: {t.sql_repair_attempts}):"
         )
         st.markdown(
-            f"<div class='sql-box'>{t.generated_sql}</div>",
+            f"<div class='sql-box'>{html.escape(t.generated_sql or '')}</div>",
             unsafe_allow_html=True,
         )
+
+        if t.sql_repair_attempts:
+            st.divider()
+            _render_sql_repair_trace(
+                getattr(t, "sql_repair_detail", []),
+                getattr(t, "sql_repair_full_trace", ""),
+            )
+
+
+SQL_LANE_STEPS = [
+    "Schema Scoping", "HyDE Expansion", "KG Column Retrieval",
+    "Join Discovery", "SQL Generation", "SQLite Execution",
+]
+CYPHER_LANE_STEPS = [
+    "Relationship Detection", "Graph Schema Grounding",
+    "Cypher Generation", "Neo4j Traversal", "Result Binding",
+]
+
+
+def _render_swimlanes(trace) -> None:
+    """
+    Render the two-swim-lane comparison diagram: Plain SQL vs Cypher /
+    Knowledge Graph. The lane actually used for this question is
+    highlighted; the other is dimmed, so the routing decision is visible
+    at a glance.
+    """
+    lane = getattr(trace, "lane", "SQL")
+    is_sql = (lane == "SQL")
+
+    def _steps_html(steps: list[str]) -> str:
+        parts = []
+        for i, s in enumerate(steps):
+            parts.append(f"<span class='lane-step'>{s}</span>")
+            if i < len(steps) - 1:
+                parts.append("<span class='lane-arrow'>&#8594;</span>")
+        return "".join(parts)
+
+    sql_row_class    = "lane-row lane-row-active" if is_sql else "lane-row lane-row-inactive"
+    cypher_row_class = "lane-row lane-row-active cypher-active" if not is_sql else "lane-row lane-row-inactive"
+
+    html = f"""
+    <div class="swimlane-wrap">
+        <div class="swimlane-title">
+            <span>Swim Lanes &mdash; Plain SQL vs Knowledge Graph + Cypher</span>
+            <span class="lane-pill {'lane-pill-sql' if is_sql else 'lane-pill-cypher'}">
+                ACTIVE: {'SQL' if is_sql else 'CYPHER / KNOWLEDGE GRAPH'}
+            </span>
+        </div>
+        <div class="{sql_row_class}">
+            <div class="lane-name">&#128202; Plain SQL</div>
+            <div class="lane-steps">{_steps_html(SQL_LANE_STEPS)}</div>
+        </div>
+        <div class="{cypher_row_class}">
+            <div class="lane-name">&#128279; Cypher / KG</div>
+            <div class="lane-steps">{_steps_html(CYPHER_LANE_STEPS)}</div>
+        </div>
+        <div class="lane-reason">
+            <b>Routing decision</b> ({getattr(trace, 'route_method', '—')}):
+            {getattr(trace, 'route_reason', 'No routing information available.')}
+        </div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def _render_kg_traversal_graph(cypher: str, height: int = 420) -> None:
+    """
+    Live traversal graph for the Cypher / Knowledge Graph lane.
+
+    Shows the fixed business-graph schema (Claimant / Claim / Policy /
+    Payment + their real relationships as ingested into Neo4j by
+    kg/graph_ingest.py) and highlights the node labels and relationship
+    types that the *actual generated Cypher* touches, so the visual reflects
+    the real query rather than a generic diagram.
+    """
+    import streamlit.components.v1 as components
+    import json as _json
+
+    if not cypher or not cypher.strip():
+        st.caption("No Cypher available — graph cannot be rendered.")
+        return
+
+    _DOMAIN_COLORS = {
+        "Claimant": ("#a78bfa", "#8b5cf6"),
+        "Claim":    ("#f87171", "#ef4444"),
+        "Policy":   ("#60a5fa", "#3b82f6"),
+        "Payment":  ("#34d399", "#10b981"),
+    }
+    _RELS = [
+        ("Claimant", "Claim",   "FILED"),
+        ("Claim",    "Policy",  "COVERED_BY"),
+        ("Claim",    "Payment", "HAS_PAYMENT"),
+        ("Claim",    "Claim",   "SAME_ADJUSTER_AS"),
+        ("Policy",   "Policy",  "SAME_AGENT_AS"),
+    ]
+
+    used_labels = {lbl for lbl in _DOMAIN_COLORS if re.search(rf"\b{lbl}\b", cypher)}
+    used_rels   = {r[2] for r in _RELS if re.search(rf"\b{r[2]}\b", cypher)}
+    hop_match   = re.search(r"\*\s*\d*\s*\.\.\s*\d+", cypher) or re.search(r"shortestPath", cypher, re.IGNORECASE)
+
+    vis_nodes, vis_edges = [], []
+    node_id_map = {}
+    for i, (label, (bg, border)) in enumerate(_DOMAIN_COLORS.items()):
+        active = label in used_labels
+        node_id_map[label] = i
+        vis_nodes.append({
+            "id": i, "label": label, "shape": "dot",
+            "size": 34 if active else 24,
+            "color": {
+                "background": bg if active else "#e5e7eb",
+                "border": border if active else "#cbd5e1",
+            },
+            "font": {"size": 13 if active else 11, "bold": active,
+                     "color": "#ffffff" if active else "#94a3b8",
+                     "face": "Inter,system-ui,sans-serif",
+                     "strokeWidth": 3, "strokeColor": border if active else "#cbd5e1"},
+            "borderWidth": 3 if active else 1,
+            "shadow": {"enabled": active, "color": bg + "55", "size": 12},
+        })
+
+    for src, dst, rel in _RELS:
+        active = rel in used_rels
+        vis_edges.append({
+            "from": node_id_map[src], "to": node_id_map[dst],
+            "label": f":{rel}",
+            "color": {"color": "#7c3aed" if active else "#e2e8f0"},
+            "width": 3 if active else 1,
+            "dashes": not active,
+            "arrows": {"to": {"enabled": True, "scaleFactor": 0.8}},
+            "font": {"size": 10, "color": "#7c3aed" if active else "#94a3b8",
+                     "strokeWidth": 2, "strokeColor": "#f8fafc"},
+        })
+
+    hop_badge = ""
+    if hop_match:
+        hop_badge = (
+            "<span style='background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;"
+            "border-radius:999px;padding:2px 10px;font-size:10.5px;font-weight:700;'>"
+            "Variable-length / shortest-path traversal detected</span>"
+        )
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet"/>
+<style>
+  * {{ box-sizing:border-box; margin:0; padding:0; }}
+  html, body {{ width:100%; height:100%; background:#f8fafc; overflow:hidden; font-family:Inter,system-ui,sans-serif; }}
+  #graph {{ width:100%; height:{height - 34}px; background:#f8fafc; }}
+  #footer {{ padding:6px 10px; font-size:11px; color:#475569; display:flex; gap:10px; align-items:center; }}
+</style></head>
+<body>
+<div id="graph"></div>
+<div id="footer">
+  <span>Highlighted = labels/relationships used by the executed Cypher</span>
+  {hop_badge}
+</div>
+<script>
+(function() {{
+  var nodes = new vis.DataSet({_json.dumps(vis_nodes)});
+  var edges = new vis.DataSet({_json.dumps(vis_edges)});
+  var container = document.getElementById('graph');
+  var options = {{
+    physics: {{ enabled: true, solver: 'forceAtlas2Based',
+      forceAtlas2Based: {{ gravitationalConstant: -60, springLength: 140, springConstant: 0.07 }},
+      stabilization: {{ enabled: true, iterations: 200 }} }},
+    interaction: {{ hover: true, dragNodes: true, dragView: true, zoomView: true }},
+    edges: {{ smooth: {{ type: 'dynamic' }} }},
+  }};
+  var network = new vis.Network(container, {{ nodes: nodes, edges: edges }}, options);
+  network.once('stabilizationIterationsDone', function() {{
+    network.fit({{ animation: {{ duration: 500 }} }});
+    network.setOptions({{ physics: {{ enabled: false }} }});
+  }});
+}})();
+</script>
+</body></html>"""
+    components.html(html, height=height, scrolling=False)
 
 
 # ── Results area ──────────────────────────────────────────────────────────────
@@ -2326,10 +2747,20 @@ _show_results = (
 if _show_results:
     last_q, last_r = st.session_state.history[0]
 
-    st.markdown(f"### Results for: *{last_q}*")
+    _lane = getattr(last_r.trace, "lane", "SQL")
+    _lane_pill_cls = "lane-pill-sql" if _lane == "SQL" else "lane-pill-cypher"
+    _lane_label = "Plain SQL" if _lane == "SQL" else "Cypher / Knowledge Graph"
+    st.markdown(
+        f"### Results for: *{last_q}* "
+        f"<span class='lane-pill {_lane_pill_cls}'>{_lane_label}</span>",
+        unsafe_allow_html=True,
+    )
+
+    # ── Swim-lane comparison diagram ────────────────────────────────────────
+    _render_swimlanes(last_r.trace)
 
     # ── Status bar ────────────────────────────────────────────────────────────
-    cols = st.columns(4)
+    cols = st.columns(5)
     with cols[0]:
         status = "Success" if last_r.success else "Failed"
         st.markdown(f"<div class='metric-card'><b>Status</b><br>{status}</div>",
@@ -2343,9 +2774,39 @@ if _show_results:
             f"<div class='metric-card'><b>Elapsed</b><br>{last_r.trace.elapsed_seconds}s</div>",
             unsafe_allow_html=True)
     with cols[3]:
-        score = f"{last_r.trace.max_retrieval_score:.2%}"
-        st.markdown(f"<div class='metric-card'><b>KG Score</b><br>{score}</div>",
-                    unsafe_allow_html=True)
+        if _lane == "SQL":
+            score = f"{last_r.trace.max_retrieval_score:.2%}"
+            st.markdown(f"<div class='metric-card'><b>KG Score</b><br>{score}</div>",
+                        unsafe_allow_html=True)
+        else:
+            attempts = getattr(last_r.trace, "cypher_repair_attempts", 0)
+            st.markdown(f"<div class='metric-card'><b>Repairs</b><br>{attempts}</div>",
+                        unsafe_allow_html=True)
+    with cols[4]:
+        if _lane == "SQL":
+            attempts = getattr(last_r.trace, "sql_repair_attempts", 0)
+            st.markdown(f"<div class='metric-card'><b>Repairs</b><br>{attempts}</div>",
+                        unsafe_allow_html=True)
+
+    # ── Generated query (always visible, regardless of trace toggle) ──────────
+    if _lane == "SQL" and last_r.trace.generated_sql:
+        _sql_repairs = getattr(last_r.trace, "sql_repair_attempts", 0)
+        _sql_label = "Generated SQL"
+        if _sql_repairs:
+            _sql_label += f"  (⚠️ self-healed after {_sql_repairs} repair attempt(s))"
+        with st.expander(_sql_label, expanded=False):
+            st.markdown(f"<div class='sql-box'>{html.escape(last_r.trace.generated_sql)}</div>",
+                        unsafe_allow_html=True)
+            if _sql_repairs:
+                st.divider()
+                _render_sql_repair_trace(
+                    getattr(last_r.trace, "sql_repair_detail", []),
+                    getattr(last_r.trace, "sql_repair_full_trace", ""),
+                )
+    elif _lane == "CYPHER" and last_r.trace.generated_cypher:
+        with st.expander("Generated Cypher", expanded=False):
+            st.markdown(f"<div class='cypher-box'>{last_r.trace.generated_cypher}</div>",
+                        unsafe_allow_html=True)
 
     # ── Error message ─────────────────────────────────────────────────────────
     if not last_r.success:
@@ -2398,7 +2859,8 @@ if _show_results:
         for i, (hq, hr) in enumerate(st.session_state.history[1:], 1):
             icon = "+" if hr.success else "x"
             rows = len(hr.df) if hr.df is not None else 0
-            with st.expander(f"[{icon}] {hq}  —  {rows} rows · {hr.trace.elapsed_seconds}s"):
+            lane_tag = "SQL" if getattr(hr.trace, "lane", "SQL") == "SQL" else "CYPHER"
+            with st.expander(f"[{icon}] [{lane_tag}] {hq}  —  {rows} rows · {hr.trace.elapsed_seconds}s"):
                 if hr.df is not None and not hr.df.empty:
                     st.dataframe(hr.df, use_container_width=True, height=200)
                 elif not hr.success:
@@ -2408,9 +2870,15 @@ else:
     # Welcome state — shown when no results yet
     st.markdown("""
     <div style="text-align:center; padding: 3rem; color: #666;">
-        <h3>Welcome</h3>
         <p>Type a question above about your P&amp;C insurance data to get started.</p>
-        <p>Your question will be processed through the 5-stage Knowledge Graph pipeline:<br>
-        <b>HyDE Expansion &rarr; KG Retrieval &rarr; Join Paths &rarr; SQL Generation &rarr; Execution</b></p>
+        <p>Every question is automatically routed to one of two swim lanes:</p>
+        <p><b>Plain SQL</b> &mdash; entity/attribute questions, filters, aggregations, reporting,
+        and fixed-depth joins:<br>
+        Schema Scoping &rarr; HyDE Expansion &rarr; KG Column Retrieval &rarr; Join Discovery
+        &rarr; SQL Generation &rarr; SQLite Execution</p>
+        <p><b>Cypher / Knowledge Graph</b> &mdash; relationship, multi-hop, and unknown-depth
+        traversal questions:<br>
+        Relationship Detection &rarr; Graph Schema Grounding &rarr; Cypher Generation
+        &rarr; Neo4j Traversal &rarr; Result Binding</p>
     </div>
     """, unsafe_allow_html=True)
