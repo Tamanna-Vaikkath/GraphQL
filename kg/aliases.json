@@ -1,0 +1,33 @@
+{
+  "_comment": "Special abbreviations and business synonyms only. Standard naming-convention variants (snake_case, spaces, suffix expansions like _DT/_AMT/_CD) are generated automatically by SchemaRegistry — do not duplicate those here.",
+
+  "tables": {
+    "pol": "POLICY",
+    "clm": "CLAIMS",
+    "pmt": "PAYMENT",
+    "clmt": "CLAIMANT"
+  },
+
+  "columns": {
+    "pol_id": "POLICY.POLICY_ID",
+    "policyno": "POLICY.POLICY_NBR",
+    "insured": "POLICY.INSURED_NM",
+    "lob": "POLICY.LINE_OF_BUSNSS",
+    "prem": "POLICY.PREMIUM_AMT",
+    "ded": "POLICY.DEDUCTIBLE_AMT",
+
+    "clm_id": "CLAIMS.CLAIM_ID",
+    "loss_date": "CLAIMS.LOSS_DT",
+    "reserve": "CLAIMS.RESERVE_AMT",
+    "incurred": "CLAIMS.INCURRED_AMT",
+
+    "pmt_id": "PAYMENT.PAYMENT_ID",
+    "payee": "PAYMENT.PAYEE_NM",
+    "check_number": "PAYMENT.CHK_NBR",
+
+    "clmt_id": "CLAIMANT.CLAIMANT_ID",
+    "dob": "CLAIMANT.DOB",
+    "atty": "CLAIMANT.ATTY_REP_FLG",
+    "fraud_score": "CLAIMANT.FRAUD_RISK_SCRE"
+  }
+}
