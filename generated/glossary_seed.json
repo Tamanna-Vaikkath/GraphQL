@@ -1,0 +1,186 @@
+[
+  {
+    "concept": "Policy",
+    "prefLabel": "Policy",
+    "definition": "CGL policy, occurrence or claims-made form.",
+    "acord": "Agreement/Policy",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "Broker",
+    "prefLabel": "Broker",
+    "definition": "Producer that placed the policy.",
+    "acord": "Party/Role",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "InsuredLocation",
+    "prefLabel": "Insured Location",
+    "definition": "Scheduled premises, geo-coded.",
+    "acord": "Place",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "CoveragePart",
+    "prefLabel": "Coverage Part",
+    "definition": "Coverage A (BI/PD), B (Personal/Advertising), C (Med Pay).",
+    "acord": "Coverage",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "Claim",
+    "prefLabel": "Claim",
+    "definition": "Claim header. Reserves, payments and coverage decisions live on Features, not here.",
+    "acord": "Claim",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "Occurrence",
+    "prefLabel": "Occurrence",
+    "definition": "The loss event; one occurrence can spawn many claims.",
+    "acord": "Event",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "Litigation",
+    "prefLabel": "Litigation",
+    "definition": "Suit filed on a claim.",
+    "acord": "Legal Action",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "Feature",
+    "prefLabel": "Feature",
+    "definition": "Exposure = one claimant x one coverage. Unit of reserve, payment, coverage decision.",
+    "acord": "Claim Folder",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "Injury",
+    "prefLabel": "Injury",
+    "definition": "ICD-coded injury sustained by a claimant.",
+    "acord": "Condition",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "Reserve",
+    "prefLabel": "Reserve",
+    "definition": "Versioned STATE: one node per reserve revision, with bitemporal validity (valid time + recorded time). Never overwritten.",
+    "acord": "Money Provision",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "Payment",
+    "prefLabel": "Payment",
+    "definition": "Check-register payment to a payee.",
+    "acord": "Financial Transaction",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "Recovery",
+    "prefLabel": "Recovery",
+    "definition": "Subrogation / salvage recoveries.",
+    "acord": "Financial Transaction",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "Party",
+    "prefLabel": "Party",
+    "definition": "Abstract parent. Roles, not person types: one Party, many roles.",
+    "acord": "Party",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "Insured",
+    "prefLabel": "Insured",
+    "definition": "Named or additional insured.",
+    "acord": "Party/Role",
+    "broader": "Party",
+    "altLabels": []
+  },
+  {
+    "concept": "Adjuster",
+    "prefLabel": "Adjuster",
+    "definition": "Desk or field adjuster.",
+    "acord": "Party/Role",
+    "broader": "Party",
+    "altLabels": []
+  },
+  {
+    "concept": "TPA",
+    "prefLabel": "T P A",
+    "definition": "Third-party administrator handling claims for the carrier.",
+    "acord": "Party/Role",
+    "broader": "Party",
+    "altLabels": []
+  },
+  {
+    "concept": "Claimant",
+    "prefLabel": "Claimant",
+    "definition": "Injured or damaged party. A person can be claimant on one claim and witness on another.",
+    "acord": "Party/Role",
+    "broader": "Party",
+    "altLabels": []
+  },
+  {
+    "concept": "Attorney",
+    "prefLabel": "Attorney",
+    "definition": "Plaintiff or defence counsel; a network hub.",
+    "acord": "Party/Role",
+    "broader": "Party",
+    "altLabels": []
+  },
+  {
+    "concept": "MedicalProvider",
+    "prefLabel": "Medical Provider",
+    "definition": "Treating clinic or IME provider; a network hub.",
+    "acord": "Party/Role",
+    "broader": "Party",
+    "altLabels": []
+  },
+  {
+    "concept": "Document",
+    "prefLabel": "Document",
+    "definition": "FNOL, demand letter, medical record, adjuster note.",
+    "acord": "Document",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "Chunk",
+    "prefLabel": "Chunk",
+    "definition": "Retrievable text chunk. The embedding vector is added by the vector step and is rebuildable from text.",
+    "acord": "Document",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "ExtractedFact",
+    "prefLabel": "Extracted Fact",
+    "definition": "Value extracted from text, with confidence and model version. Promoted to a business property only after threshold or review.",
+    "acord": "PROV-O Entity",
+    "broader": null,
+    "altLabels": []
+  },
+  {
+    "concept": "IngestionRun",
+    "prefLabel": "Ingestion Run",
+    "definition": "Pipeline run that produced facts or states; enables lineage.",
+    "acord": "PROV-O Activity",
+    "broader": null,
+    "altLabels": []
+  }
+]

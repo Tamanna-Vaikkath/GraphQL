@@ -1,0 +1,64 @@
+# Physical mapping: which Delta table / column feeds each ontology class, property and relationship.
+# Ontology = WHAT the business means (gl_claims.yaml).  Mapping = WHERE it lives (this file).
+# Ingest builds the graph ONLY from what is mapped here, and rejects anything the ontology does not declare.
+# Every graph element is therefore derivable from Delta tables alone (single source of record).
+version: 0.2.0
+
+nodes:        # class: {table, id: <id column>, props: {ontologyProperty: COLUMN}, cast: {ontologyProperty: type}}
+  Policy:          {table: POLICY, id: POLICY_ID, props: {policyNumber: POLICY_NUMBER, form: FORM, effectiveDate: EFFECTIVE_DATE, expiryDate: EXPIRY_DATE, limitPerOccurrence: LIMIT_PER_OCCURRENCE, retention: RETENTION}, cast: {limitPerOccurrence: float, retention: float}}
+  Broker:          {table: BROKER, id: BROKER_ID, props: {name: NAME}}
+  InsuredLocation: {table: INSURED_LOCATION, id: LOCATION_ID, props: {address: ADDRESS, city: CITY, state: STATE, lat: LAT, long: LONG, occupancyClass: OCCUPANCY_CLASS, geoRiskScore: GEO_RISK_SCORE}, cast: {lat: float, long: float, geoRiskScore: float}}
+  CoveragePart:    {table: COVERAGE_PART, id: COVERAGE_ID, props: {code: CODE, label: LABEL, limit: LIMIT_AMT, deductible: DEDUCTIBLE}, cast: {limit: float, deductible: float}}
+  Claim:           {table: CLAIM, id: CLAIM_ID, props: {claimNumber: CLAIM_NUMBER, status: STATUS, lob: LOB, reportedDate: REPORTED_DATE, handlingOffice: HANDLING_OFFICE, summary: SUMMARY}}
+  Occurrence:      {table: OCCURRENCE, id: OCCURRENCE_ID, props: {lossDate: LOSS_DATE, causeOfLoss: CAUSE_OF_LOSS, jurisdiction: JURISDICTION, lossDescription: LOSS_DESCRIPTION}}
+  Litigation:      {table: LITIGATION, id: LITIGATION_ID, props: {suitNumber: SUIT_NUMBER, venue: VENUE, court: COURT, stage: STAGE, filedDate: FILED_DATE, trialDate: TRIAL_DATE}}
+  Feature:         {table: FEATURE, id: FEATURE_ID, props: {featureType: FEATURE_TYPE, status: STATUS, severityScore: SEVERITY_SCORE}, cast: {severityScore: float}}
+  Injury:          {table: INJURY, id: INJURY_ID, props: {icd10: ICD10, bodyPart: BODY_PART, injuryClass: INJURY_CLASS, severityBand: SEVERITY_BAND}}
+  Reserve:         {table: RESERVE_STATE, id: RESERVE_ID, props: {amount: AMOUNT, type: RESERVE_TYPE, validFrom: VALID_FROM, validTo: VALID_TO, recordedAt: RECORDED_AT, isCurrent: IS_CURRENT, sourceTxn: SOURCE_TXN}, cast: {amount: float, isCurrent: bool}}
+  Payment:         {table: PAYMENT, id: PAYMENT_ID, props: {amount: AMOUNT, checkNumber: CHECK_NUMBER, paymentDate: PAYMENT_DATE, costCategory: COST_CATEGORY}, cast: {amount: float}}
+  Recovery:        {table: RECOVERY, id: RECOVERY_ID, props: {amount: AMOUNT, recoveryType: RECOVERY_TYPE}, cast: {amount: float}}
+  Insured:         {table: INSURED, id: INSURED_ID, props: {name: NAME}}
+  Adjuster:        {table: ADJUSTER, id: ADJUSTER_ID, props: {name: NAME, office: OFFICE}}
+  TPA:             {table: TPA, id: TPA_ID, props: {name: NAME, tpaCode: TPA_CODE}}
+  Claimant:        {table: CLAIMANT, id: CLAIMANT_ID, props: {name: NAME, state: STATE, resolutionConfidence: RESOLUTION_CONFIDENCE}, cast: {resolutionConfidence: float}}
+  Attorney:        {table: ATTORNEY, id: ATTORNEY_ID, props: {name: NAME, firm: FIRM, barId: BAR_ID}}
+  MedicalProvider: {table: MEDICAL_PROVIDER, id: PROVIDER_ID, props: {name: NAME, npi: NPI, specialty: SPECIALTY}}
+  Document:        {table: DOCUMENT, id: DOCUMENT_ID, props: {docType: DOC_TYPE, receivedDate: RECEIVED_DATE, sourceUri: SOURCE_URI}}
+  Chunk:           {table: TEXT_CHUNK, id: CHUNK_ID, props: {text: TEXT, chunkIndex: CHUNK_INDEX, embeddingModel: EMBEDDING_MODEL}, cast: {chunkIndex: int}}
+  ExtractedFact:   {table: EXTRACTED_FACT, id: FACT_ID, props: {factType: FACT_TYPE, value: VALUE, confidence: CONFIDENCE, modelVersion: MODEL_VERSION, extractedAt: EXTRACTED_AT}, cast: {confidence: float}}
+  IngestionRun:    {table: INGESTION_RUN, id: RUN_ID, props: {sourceSystem: SOURCE_SYSTEM, runType: RUN_TYPE, startedAt: STARTED_AT, ontologyVersion: ONTOLOGY_VERSION}}
+
+relationships:   # one edge per row where BOTH id columns are non-null.  from/to must match an ontology relationship.
+  - {rel: PLACED_BY,        from: Policy,   to: Broker,          table: POLICY,           from_id: POLICY_ID,     to_id: BROKER_ID}
+  - {rel: SCHEDULES,        from: Policy,   to: InsuredLocation, table: POLICY_LOCATION,  from_id: POLICY_ID,     to_id: LOCATION_ID}
+  - {rel: HAS_COVERAGE,     from: Policy,   to: CoveragePart,    table: COVERAGE_PART,    from_id: POLICY_ID,     to_id: COVERAGE_ID}
+  - {rel: ISSUED_TO,        from: Policy,   to: Insured,         table: POLICY,           from_id: POLICY_ID,     to_id: INSURED_ID}
+  - {rel: MADE_UNDER,       from: Claim,    to: Policy,          table: CLAIM,            from_id: CLAIM_ID,      to_id: POLICY_ID}
+  - {rel: ARISES_FROM,      from: Claim,    to: Occurrence,      table: CLAIM,            from_id: CLAIM_ID,      to_id: OCCURRENCE_ID}
+  - {rel: IN_SUIT,          from: Claim,    to: Litigation,      table: LITIGATION,       from_id: CLAIM_ID,      to_id: LITIGATION_ID}
+  - {rel: HAS_FEATURE,      from: Claim,    to: Feature,         table: FEATURE,          from_id: CLAIM_ID,      to_id: FEATURE_ID}
+  - {rel: HAS_RECOVERY,     from: Claim,    to: Recovery,        table: RECOVERY,         from_id: CLAIM_ID,      to_id: RECOVERY_ID}
+  - {rel: HANDLED_BY,       from: Claim,    to: Adjuster,        table: CLAIM,            from_id: CLAIM_ID,      to_id: ADJUSTER_ID}
+  - {rel: ADMINISTERED_BY,  from: Claim,    to: TPA,             table: CLAIM,            from_id: CLAIM_ID,      to_id: TPA_ID}
+  - {rel: HAS_DOCUMENT,     from: Claim,    to: Document,        table: DOCUMENT,         from_id: CLAIM_ID,      to_id: DOCUMENT_ID}
+  - {rel: OCCURRED_AT,      from: Occurrence, to: InsuredLocation, table: OCCURRENCE,     from_id: OCCURRENCE_ID, to_id: LOCATION_ID}
+  - {rel: COUNSEL,          from: Litigation, to: Attorney,      table: LITIGATION,       from_id: LITIGATION_ID, to_id: ATTORNEY_ID}
+  - {rel: TRIGGERS,         from: Feature,  to: CoveragePart,    table: FEATURE,          from_id: FEATURE_ID,    to_id: COVERAGE_ID}
+  - {rel: HAS_RESERVE,      from: Feature,  to: Reserve,         table: RESERVE_STATE,    from_id: FEATURE_ID,    to_id: RESERVE_ID}
+  - {rel: HAS_PAYMENT,      from: Feature,  to: Payment,         table: PAYMENT,          from_id: FEATURE_ID,    to_id: PAYMENT_ID}
+  - {rel: FOR_CLAIMANT,     from: Feature,  to: Claimant,        table: FEATURE,          from_id: FEATURE_ID,    to_id: CLAIMANT_ID}
+  - {rel: REPRESENTED_BY,   from: Claimant, to: Attorney,        table: CLAIMANT,         from_id: CLAIMANT_ID,   to_id: ATTORNEY_ID}
+  - {rel: TREATED_BY,       from: Claimant, to: MedicalProvider, table: CLAIMANT,         from_id: CLAIMANT_ID,   to_id: PROVIDER_ID}
+  - {rel: SUSTAINED,        from: Claimant, to: Injury,          table: INJURY,           from_id: CLAIMANT_ID,   to_id: INJURY_ID}
+  - {rel: PAYEE,            from: Payment,  to: Party,           table: PAYMENT,          from_id: PAYMENT_ID,    to_id: PAYEE_ID}
+  - {rel: HAS_CHUNK,        from: Document, to: Chunk,           table: TEXT_CHUNK,       from_id: DOCUMENT_ID,   to_id: CHUNK_ID}
+  - {rel: YIELDS,           from: Chunk,    to: ExtractedFact,   table: EXTRACTED_FACT,   from_id: CHUNK_ID,      to_id: FACT_ID}
+  - {rel: MENTIONS,         from: Chunk,    to: Claimant,        table: TEXT_CHUNK,       from_id: CHUNK_ID,      to_id: MENTIONED_CLAIMANT_ID}
+  - {rel: ASSERTS,          from: ExtractedFact, to: Injury,     table: EXTRACTED_FACT,   from_id: FACT_ID,       to_id: INJURY_ID}
+  - {rel: WAS_GENERATED_BY, from: Reserve,  to: IngestionRun,    table: RESERVE_STATE,    from_id: RESERVE_ID,    to_id: RUN_ID}
+  - {rel: WAS_GENERATED_BY, from: Payment,  to: IngestionRun,    table: PAYMENT,          from_id: PAYMENT_ID,    to_id: RUN_ID}
+  - {rel: WAS_GENERATED_BY, from: ExtractedFact, to: IngestionRun, table: EXTRACTED_FACT, from_id: FACT_ID,       to_id: RUN_ID}
+
+# Versioned-state patterns actually implemented in this build (everything else stores current value only).
+versioned:
+  Reserve: {pattern: state-node, valid_time: [validFrom, validTo], transaction_time: recordedAt, current_flag: isCurrent}

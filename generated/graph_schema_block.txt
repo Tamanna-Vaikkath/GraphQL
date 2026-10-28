@@ -1,0 +1,82 @@
+Knowledge Graph schema — Commercial GL Claims ontology v0.2.0 (Neo4j property graph).
+
+Nodes (each also has a unique string property `id`):
+  (:Policy {policyNumber, form, effectiveDate, expiryDate, limitPerOccurrence, retention})
+  (:Broker {name})
+  (:InsuredLocation {address, city, state, lat, long, occupancyClass, geoRiskScore})
+  (:CoveragePart {code, label, limit, deductible})
+  (:Claim {claimNumber, status, lob, reportedDate, handlingOffice, summary})   // time-varying: status (current value)
+  (:Occurrence {lossDate, causeOfLoss, jurisdiction, lossDescription})
+  (:Litigation {suitNumber, venue, court, stage, filedDate, trialDate})   // time-varying: stage (current value)
+  (:Feature {featureType, status, severityScore})   // time-varying: status (current value)
+  (:Injury {icd10, bodyPart, injuryClass, severityBand})
+  (:Reserve {amount, type, validFrom, validTo, recordedAt, isCurrent, sourceTxn})
+  (:Payment {amount, checkNumber, paymentDate, costCategory})
+  (:Recovery {amount, recoveryType})
+  (:Insured:Party {name})
+  (:Adjuster:Party {name, office})
+  (:TPA:Party {name, tpaCode})
+  (:Claimant:Party {name, state, resolutionConfidence})
+  (:Attorney:Party {name, firm, barId})
+  (:MedicalProvider:Party {name, npi, specialty})
+  (:Document {docType, receivedDate, sourceUri})
+  (:Chunk {text, chunkIndex, embeddingModel, embedding})
+  (:ExtractedFact {factType, value, confidence, modelVersion, extractedAt})
+  (:IngestionRun {sourceSystem, runType, startedAt, ontologyVersion})
+Abstract class Party: every Insured, Adjuster, TPA, Claimant, Attorney, MedicalProvider node also carries the :Party label.
+
+Relationships (direction matters):
+  (:Policy)-[:PLACED_BY]->(:Broker)
+  (:Policy)-[:SCHEDULES]->(:InsuredLocation)
+  (:Policy)-[:HAS_COVERAGE]->(:CoveragePart)
+  (:Policy)-[:ISSUED_TO]->(:Insured)
+  (:Claim)-[:MADE_UNDER]->(:Policy)
+  (:Claim)-[:ARISES_FROM]->(:Occurrence)
+  (:Claim)-[:IN_SUIT]->(:Litigation)
+  (:Claim)-[:HAS_FEATURE]->(:Feature)
+  (:Claim)-[:HAS_RECOVERY]->(:Recovery)
+  (:Claim)-[:HANDLED_BY]->(:Adjuster)
+  (:Claim)-[:ADMINISTERED_BY]->(:TPA)
+  (:Claim)-[:HAS_DOCUMENT]->(:Document)
+  (:Occurrence)-[:OCCURRED_AT]->(:InsuredLocation)
+  (:Litigation)-[:COUNSEL]->(:Attorney)
+  (:Feature)-[:TRIGGERS]->(:CoveragePart)
+  (:Feature)-[:HAS_RESERVE]->(:Reserve)
+  (:Feature)-[:HAS_PAYMENT]->(:Payment)
+  (:Feature)-[:FOR_CLAIMANT]->(:Claimant)
+  (:Claimant)-[:REPRESENTED_BY]->(:Attorney)
+  (:Claimant)-[:TREATED_BY]->(:MedicalProvider)
+  (:Claimant)-[:SUSTAINED]->(:Injury)
+  (:Payment)-[:PAYEE]->(:Party)
+  (:Document)-[:HAS_CHUNK]->(:Chunk)
+  (:Chunk)-[:YIELDS]->(:ExtractedFact)
+  (:Chunk)-[:MENTIONS]->(:Claimant)
+  (:ExtractedFact)-[:ASSERTS]->(:Injury)
+  (:Reserve)-[:WAS_GENERATED_BY]->(:IngestionRun)
+  (:Payment)-[:WAS_GENERATED_BY]->(:IngestionRun)
+  (:ExtractedFact)-[:WAS_GENERATED_BY]->(:IngestionRun)
+
+Allowed values:
+  Policy.form: occurrence | claims_made
+  Claim.status: open | closed
+  Claim.lob: CGL
+  Feature.featureType: BI | PD | MedPay
+  Feature.status: open | closed
+  CoveragePart.code: A | B | C
+  Litigation.stage: filed | discovery | trial | closed
+  Injury.injuryClass: soft_tissue | fracture | laceration | head_injury
+  Reserve.type: indemnity | alae
+  Payment.costCategory: indemnity | alae | medical
+  Occurrence.causeOfLoss: slip_and_fall | trip_hazard | falling_object | product_liability | food_borne | parking_lot | dog_bite | assault
+  ExtractedFact.factType: pre_existing_condition | witness_present | surveillance_requested | ambulance_transport | prior_injury_denied
+
+Ontology rules:
+- Every node has a unique string property id. Dates are ISO-8601 strings (YYYY-MM-DD): compare them as strings.
+- Match a role by its own label (e.g. :Attorney). Use :Party only to match ANY party.
+- Reserves, payments and coverage decisions hang off Feature, not Claim: (:Claim)-[:HAS_FEATURE]->(:Feature)-[:HAS_RESERVE]->(:Reserve).
+- Reserve is VERSIONED STATE: one node per revision. The CURRENT reserve is the one with isCurrent = true. History = all Reserve nodes ordered by validFrom.
+- Bitemporal 'as known on D' (as of valid date V): Reserve with recordedAt <= D AND validFrom <= V, take the latest validFrom, then latest recordedAt.
+- An OPEN suit is a Litigation with stage <> 'closed'. A claimant is represented by counsel when (:Claimant)-[:REPRESENTED_BY]->(:Attorney).
+- A claim is carrier-handled when it has HANDLED_BY, and TPA-administered when it has ADMINISTERED_BY.
+- Provenance: Reserve, Payment and ExtractedFact link to the IngestionRun that produced them via WAS_GENERATED_BY.
+- Use ONLY the labels, relationship types and properties listed above.

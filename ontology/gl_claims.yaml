@@ -1,0 +1,109 @@
+# Commercial GL Claims ontology  — SOURCE OF TRUTH (v0.2.0)
+# This file is CONSUMED AT RUNTIME: it drives ingest (only declared labels/edges/properties may enter the graph),
+# validation, the LLM schema block, the glossary, the Neo4j ontology metadata, and the visual.
+# status : have = in the original NLQ demo | partial = flag/column only | build = new in this build
+# '*'    : property is time-varying. Versioned STATE is implemented for Reserve first (see gl_mapping.yaml: versioned).
+# abstract: true  => no instances of its own; concrete subclasses carry the parent label too (:Attorney:Party).
+version: 0.2.0
+domains:
+  contract:  {label: Contract,  color: "#2f5d8a"}
+  loss:      {label: "Loss & Claim", color: "#2e8b6a"}
+  financial: {label: Financial, color: "#127a86"}
+  party:     {label: "Party (all subClassOf Party)", color: "#7a4fb0"}
+  evidence:  {label: "Evidence & Provenance", color: "#c0702a"}
+
+classes:
+  Policy:         {domain: contract, status: have,    acord: Agreement/Policy, x: 40,  y: 100, def: "CGL policy, occurrence or claims-made form.", props: [policyNumber, form, effectiveDate, expiryDate, limitPerOccurrence, retention]}
+  Broker:         {domain: contract, status: build,   acord: Party/Role,       x: 400, y: 40,  def: "Producer that placed the policy.", props: [name]}
+  InsuredLocation: {domain: contract, status: build,   acord: Place,            x: 400, y: 95,  def: "Scheduled premises, geo-coded.", props: [address, city, state, lat, long, occupancyClass, geoRiskScore]}
+  CoveragePart:   {domain: contract, status: build,   acord: Coverage,         x: 400, y: 150, def: "Coverage A (BI/PD), B (Personal/Advertising), C (Med Pay).", props: [code, label, limit, deductible]}
+
+  Claim:          {domain: loss, status: have,    acord: Claim,               x: 30,  y: 380, def: "Claim header. Reserves, payments and coverage decisions live on Features, not here.", props: [claimNumber, status*, lob, reportedDate, handlingOffice, summary]}
+  Occurrence:     {domain: loss, status: partial, acord: Event,               x: 190, y: 310, def: "The loss event; one occurrence can spawn many claims.", props: [lossDate, causeOfLoss, jurisdiction, lossDescription]}
+  Litigation:     {domain: loss, status: partial, acord: Legal Action,        x: 190, y: 375, def: "Suit filed on a claim.", props: [suitNumber, venue, court, stage*, filedDate, trialDate]}
+  Feature:        {domain: loss, status: build,   acord: Claim Folder,        x: 190, y: 440, def: "Exposure = one claimant x one coverage. Unit of reserve, payment, coverage decision.", props: [featureType, status*, severityScore]}
+  Injury:         {domain: loss, status: build,   acord: Condition,           x: 190, y: 505, def: "ICD-coded injury sustained by a claimant.", props: [icd10, bodyPart, injuryClass, severityBand]}
+
+  Reserve:        {domain: financial, status: partial, acord: Money Provision, x: 800, y: 330, def: "Versioned STATE: one node per reserve revision, with bitemporal validity (valid time + recorded time). Never overwritten.", props: [amount, type, validFrom, validTo, recordedAt, isCurrent, sourceTxn]}
+  Payment:        {domain: financial, status: have,    acord: Financial Transaction, x: 800, y: 395, def: "Check-register payment to a payee.", props: [amount, checkNumber, paymentDate, costCategory]}
+  Recovery:       {domain: financial, status: build,   acord: Financial Transaction, x: 800, y: 460, def: "Subrogation / salvage recoveries.", props: [amount, recoveryType]}
+
+  Party:          {domain: party, status: partial, abstract: true, acord: Party, x: 505, y: 262, def: "Abstract parent. Roles, not person types: one Party, many roles.", props: [name]}
+  Insured:        {domain: party, status: partial, subClassOf: Party, acord: Party/Role, x: 590, y: 340, def: "Named or additional insured.", props: []}
+  Adjuster:       {domain: party, status: have,    subClassOf: Party, acord: Party/Role, x: 420, y: 340, def: "Desk or field adjuster.", props: [office]}
+  TPA:            {domain: party, status: build,   subClassOf: Party, acord: Party/Role, x: 420, y: 400, def: "Third-party administrator handling claims for the carrier.", props: [tpaCode]}
+  Claimant:       {domain: party, status: have,    subClassOf: Party, acord: Party/Role, x: 420, y: 470, def: "Injured or damaged party. A person can be claimant on one claim and witness on another.", props: [state, resolutionConfidence]}
+  Attorney:       {domain: party, status: partial, subClassOf: Party, acord: Party/Role, x: 590, y: 400, def: "Plaintiff or defence counsel; a network hub.", props: [firm, barId]}
+  MedicalProvider: {domain: party, status: build,   subClassOf: Party, acord: Party/Role, x: 590, y: 470, def: "Treating clinic or IME provider; a network hub.", props: [npi, specialty]}
+
+  Document:       {domain: evidence, status: build, acord: Document, x: 50,  y: 675, def: "FNOL, demand letter, medical record, adjuster note.", props: [docType, receivedDate, sourceUri]}
+  Chunk:          {domain: evidence, status: build, acord: Document, x: 230, y: 675, def: "Retrievable text chunk. The embedding vector is added by the vector step and is rebuildable from text.", props: [text, chunkIndex, embeddingModel, embedding]}
+  ExtractedFact:  {domain: evidence, status: build, acord: PROV-O Entity, x: 410, y: 675, def: "Value extracted from text, with confidence and model version. Promoted to a business property only after threshold or review.", props: [factType, value, confidence, modelVersion, extractedAt]}
+  IngestionRun:   {domain: evidence, status: build, acord: PROV-O Activity, x: 590, y: 675, def: "Pipeline run that produced facts or states; enables lineage.", props: [sourceSystem, runType, startedAt, ontologyVersion]}
+
+relationships:
+  - {from: Policy, rel: PLACED_BY, to: Broker}
+  - {from: Policy, rel: SCHEDULES, to: InsuredLocation}
+  - {from: Policy, rel: HAS_COVERAGE, to: CoveragePart}
+  - {from: Policy, rel: ISSUED_TO, to: Insured}
+  - {from: Claim, rel: MADE_UNDER, to: Policy}
+  - {from: Claim, rel: ARISES_FROM, to: Occurrence}
+  - {from: Claim, rel: IN_SUIT, to: Litigation}
+  - {from: Claim, rel: HAS_FEATURE, to: Feature}
+  - {from: Claim, rel: HAS_RECOVERY, to: Recovery}
+  - {from: Claim, rel: HANDLED_BY, to: Adjuster}
+  - {from: Claim, rel: ADMINISTERED_BY, to: TPA}
+  - {from: Claim, rel: HAS_DOCUMENT, to: Document}
+  - {from: Occurrence, rel: OCCURRED_AT, to: InsuredLocation}
+  - {from: Litigation, rel: COUNSEL, to: Attorney}
+  - {from: Feature, rel: TRIGGERS, to: CoveragePart}
+  - {from: Feature, rel: HAS_RESERVE, to: Reserve}
+  - {from: Feature, rel: HAS_PAYMENT, to: Payment}
+  - {from: Feature, rel: FOR_CLAIMANT, to: Claimant}
+  - {from: Claimant, rel: REPRESENTED_BY, to: Attorney}
+  - {from: Claimant, rel: TREATED_BY, to: MedicalProvider}
+  - {from: Claimant, rel: SUSTAINED, to: Injury}
+  - {from: Payment, rel: PAYEE, to: Party}
+  - {from: Document, rel: HAS_CHUNK, to: Chunk}
+  - {from: Chunk, rel: YIELDS, to: ExtractedFact}
+  - {from: Chunk, rel: MENTIONS, to: Claimant}
+  - {from: ExtractedFact, rel: ASSERTS, to: Injury}
+  - {from: Reserve, rel: WAS_GENERATED_BY, to: IngestionRun}
+  - {from: Payment, rel: WAS_GENERATED_BY, to: IngestionRun}
+  - {from: ExtractedFact, rel: WAS_GENERATED_BY, to: IngestionRun}
+
+# Competency questions = scope AND acceptance tests. The executable form lives in ontology/cq_tests.yaml.
+competency_questions:
+  - {id: CQ1, q: "Which open CGL bodily-injury features have a claimant represented by counsel with more than 10 open suits against us?", capability: "4 hops + aggregation", touches: [Claim, Feature, Claimant, Attorney, Litigation], rels: [HAS_FEATURE, FOR_CLAIMANT, REPRESENTED_BY, COUNSEL]}
+  - {id: CQ2, q: "Which medical providers appear on more than N soft-tissue claims across different insureds in the last 24 months?", capability: "Network centrality + time filter", touches: [Claim, Feature, Claimant, MedicalProvider, Injury, Policy, Insured], rels: [HAS_FEATURE, FOR_CLAIMANT, TREATED_BY, SUSTAINED, MADE_UNDER, ISSUED_TO]}
+  - {id: CQ3, q: "Which claims mention a pre-existing condition in any adjuster note or medical record, and what is their reserve development?", capability: "Extracted facts + temporal state (vector retrieval added in the vector step)", touches: [Claim, Document, Chunk, ExtractedFact, Feature, Reserve], rels: [HAS_DOCUMENT, HAS_CHUNK, YIELDS, HAS_FEATURE, HAS_RESERVE]}
+  - {id: CQ4, q: "What was the indemnity reserve on feature X as known on the quarter-end close date?", capability: "Bitemporal query", touches: [Feature, Reserve, IngestionRun], rels: [HAS_RESERVE, WAS_GENERATED_BY]}
+  - {id: CQ5, q: "Which insured locations have had three or more premises occurrences, and under which coverage parts were they paid?", capability: "Location rollup + coverage linkage", touches: [InsuredLocation, Occurrence, Claim, Feature, CoveragePart, Payment], rels: [OCCURRED_AT, ARISES_FROM, HAS_FEATURE, TRIGGERS, HAS_PAYMENT]}
+  - {id: CQ6, q: "For a given payment, which source system, ingestion run and extraction model produced each supporting fact?", capability: "Provenance / lineage", touches: [Payment, Feature, Claim, Document, Chunk, ExtractedFact, IngestionRun], rels: [HAS_PAYMENT, HAS_FEATURE, HAS_DOCUMENT, HAS_CHUNK, YIELDS, WAS_GENERATED_BY]}
+  - {id: CQ7, q: "Which TPA-reported claims map to the same occurrence as a carrier-handled claim?", capability: "Shared-occurrence resolution", touches: [Claim, TPA, Adjuster, Occurrence], rels: [ADMINISTERED_BY, HANDLED_BY, ARISES_FROM]}
+
+# Allowed values for coded properties (shown to the LLM, checked by tests)
+enums:
+  Policy.form: [occurrence, claims_made]
+  Claim.status: [open, closed]
+  Claim.lob: [CGL]
+  Feature.featureType: [BI, PD, MedPay]
+  Feature.status: [open, closed]
+  CoveragePart.code: [A, B, C]
+  Litigation.stage: [filed, discovery, trial, closed]
+  Injury.injuryClass: [soft_tissue, fracture, laceration, head_injury]
+  Reserve.type: [indemnity, alae]
+  Payment.costCategory: [indemnity, alae, medical]
+  Occurrence.causeOfLoss: [slip_and_fall, trip_hazard, falling_object, product_liability, food_borne, parking_lot, dog_bite, assault]
+  ExtractedFact.factType: [pre_existing_condition, witness_present, surveillance_requested, ambulance_transport, prior_injury_denied]
+
+# Business rules the Cypher generator must follow (rendered into the LLM schema block)
+query_rules:
+  - "Every node has a unique string property id. Dates are ISO-8601 strings (YYYY-MM-DD): compare them as strings."
+  - "Match a role by its own label (e.g. :Attorney). Use :Party only to match ANY party."
+  - "Reserves, payments and coverage decisions hang off Feature, not Claim: (:Claim)-[:HAS_FEATURE]->(:Feature)-[:HAS_RESERVE]->(:Reserve)."
+  - "Reserve is VERSIONED STATE: one node per revision. The CURRENT reserve is the one with isCurrent = true. History = all Reserve nodes ordered by validFrom."
+  - "Bitemporal 'as known on D' (as of valid date V): Reserve with recordedAt <= D AND validFrom <= V, take the latest validFrom, then latest recordedAt."
+  - "An OPEN suit is a Litigation with stage <> 'closed'. A claimant is represented by counsel when (:Claimant)-[:REPRESENTED_BY]->(:Attorney)."
+  - "A claim is carrier-handled when it has HANDLED_BY, and TPA-administered when it has ADMINISTERED_BY."
+  - "Provenance: Reserve, Payment and ExtractedFact link to the IngestionRun that produced them via WAS_GENERATED_BY."

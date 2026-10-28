@@ -1,0 +1,33 @@
+# P&C Insurance NLQ Chatbot — Dependencies
+
+# Core LLM / Azure OpenAI
+openai>=1.30.0
+
+# Neo4j graph database
+neo4j>=5.20.0
+
+# Databricks SQL Warehouse connector
+databricks-sql-connector>=4.0.0
+
+# Databricks SDK
+databricks-sdk>=0.40.0
+
+# Streamlit UI
+streamlit>=1.35.0
+
+# Data
+pandas>=2.0.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# KG Visualization
+pyvis>=0.3.2
+
+# SQL parsing for the Live Traversal Graph (utils/sql_traversal.py).
+# Optional at runtime (a regex fallback is used if it's missing) but
+# strongly recommended -- it gives much richer traversal detail.
+sqlglot>=25.0.0
+
+# Ontology files (ontology/*.yaml)
+pyyaml>=6.0

@@ -1,0 +1,28 @@
+{
+  "_comment": "Curated meaning for the GL tables. Appended to the LLM-written descriptions by kg/build_graph.py so the SQL lane understands them.",
+  "tables": {
+    "FEATURE": "EXPOSURE level. One row per claimant x coverage on a claim (FEATURE_TYPE BI, PD or MedPay). Reserves, payments and coverage decisions hang off FEATURE, not CLAIM: join CLAIM -> FEATURE -> RESERVE_STATE / PAYMENT.",
+    "RESERVE_STATE": "VERSIONED reserve history, bitemporal. One row per reserve revision; rows are never updated. IS_CURRENT = 1 marks the latest. VALID_FROM/VALID_TO is when the amount applied; RECORDED_AT is when the carrier learned it. 'Reserve as known on D (valid on V)': RECORDED_AT <= D AND VALID_FROM <= V, take the row with the latest VALID_FROM then RECORDED_AT.",
+    "LITIGATION": "One row per suit on a claim. An OPEN suit has STAGE <> 'closed' (stages: filed, discovery, trial, closed). ATTORNEY_ID is the counsel on the suit.",
+    "PAYMENT": "One row per payment on a FEATURE. PAYEE_ID can point at ANY party table; the prefix tells which: CLT- claimant, ATT- attorney, MP- medical provider. RUN_ID links to the ingestion run that produced it.",
+    "CLAIM": "Claim header. A claim is carrier-handled when ADJUSTER_ID is set and TPA-administered when TPA_ID is set. OCCURRENCE_ID can be shared by several claims arising from the same loss event.",
+    "CLAIMANT": "Injured or damaged party. ATTORNEY_ID = counsel representing them, PROVIDER_ID = treating medical provider (both may be NULL).",
+    "EXTRACTED_FACT": "Facts extracted from document text by a model. CONFIDENCE is 0-1; treat >= 0.7 as reliable. MODEL_VERSION and RUN_ID give lineage. FACT_TYPE 'pre_existing_condition' marks pre-existing condition mentions. Path to a claim: EXTRACTED_FACT -> TEXT_CHUNK -> DOCUMENT -> CLAIM.",
+    "TEXT_CHUNK": "A passage of a DOCUMENT. EMBEDDING_MODEL is NULL until the vector step has embedded it.",
+    "INJURY": "Injury sustained by a claimant. INJURY_CLASS is soft_tissue, fracture, laceration or head_injury.",
+    "OCCURRENCE": "The loss event. LOCATION_ID is the premises where it happened; premises with 3+ occurrences are repeat-loss locations."
+  },
+  "columns": {
+    "RESERVE_STATE.IS_CURRENT": "1 = the latest revision for the feature; 0 = superseded. Use IS_CURRENT = 1 for the current reserve.",
+    "RESERVE_STATE.RESERVE_TYPE": "Values: indemnity, alae.",
+    "FEATURE.FEATURE_TYPE": "Values: BI (bodily injury), PD (property damage), MedPay (medical payments, coverage C).",
+    "FEATURE.STATUS": "Values: open, closed.",
+    "CLAIM.STATUS": "Values: open, closed.",
+    "CLAIM.LOB": "Always CGL (commercial general liability) in this dataset.",
+    "COVERAGE_PART.CODE": "A = Bodily Injury & Property Damage, B = Personal & Advertising Injury, C = Medical Payments.",
+    "LITIGATION.STAGE": "Values: filed, discovery, trial, closed. Open = anything except closed.",
+    "PAYMENT.COST_CATEGORY": "Values: indemnity, alae, medical.",
+    "OCCURRENCE.CAUSE_OF_LOSS": "Values: slip_and_fall, trip_hazard, falling_object, product_liability, food_borne, parking_lot, dog_bite, assault.",
+    "POLICY.FORM": "Values: occurrence, claims_made."
+  }
+}

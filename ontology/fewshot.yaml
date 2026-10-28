@@ -1,0 +1,44 @@
+# Few-shot NL -> Cypher examples for the NLQ lane (literals inlined: the lane runs without parameter binding).
+# They are NOT the competency-question phrasings (those are held out for evaluation). tests/run_cq_tests.py --fewshot
+# executes every one of these so the prompt never teaches a query that does not run.
+examples:
+  - q: "Which attorneys currently have more than 8 open suits?"
+    cypher: |
+      MATCH (a:Attorney)<-[:COUNSEL]-(l:Litigation) WHERE l.stage <> 'closed'
+      WITH a, count(DISTINCT l) AS open_suits WHERE open_suits > 8
+      RETURN a.id AS attorney_id, a.name AS attorney, a.firm AS firm, open_suits ORDER BY open_suits DESC LIMIT 100
+  - q: "Show the reserve history of feature FEA-1001-BI."
+    cypher: |
+      MATCH (:Feature {id: 'FEA-1001-BI'})-[:HAS_RESERVE]->(r:Reserve {type: 'indemnity'})
+      RETURN r.amount AS amount, r.validFrom AS valid_from, r.recordedAt AS recorded_at, r.isCurrent AS is_current
+      ORDER BY r.validFrom LIMIT 100
+  - q: "What is the current indemnity reserve on each feature of claim CLM-GL-1001?"
+    cypher: |
+      MATCH (:Claim {id: 'CLM-GL-1001'})-[:HAS_FEATURE]->(f:Feature)-[:HAS_RESERVE]->(r:Reserve {isCurrent: true, type: 'indemnity'})
+      RETURN f.id AS feature_id, f.featureType AS feature_type, r.amount AS current_reserve LIMIT 100
+  - q: "How many claims does each TPA administer?"
+    cypher: |
+      MATCH (t:TPA)<-[:ADMINISTERED_BY]-(c:Claim)
+      RETURN t.name AS tpa, count(DISTINCT c) AS claims ORDER BY claims DESC LIMIT 100
+  - q: "How much has been paid under each coverage part at location LOC-001?"
+    cypher: |
+      MATCH (:InsuredLocation {id: 'LOC-001'})<-[:OCCURRED_AT]-(:Occurrence)<-[:ARISES_FROM]-(:Claim)-[:HAS_FEATURE]->(f:Feature)-[:TRIGGERS]->(cov:CoveragePart)
+      MATCH (f)-[:HAS_PAYMENT]->(p:Payment)
+      RETURN cov.code AS coverage_part, cov.label AS coverage, sum(p.amount) AS paid ORDER BY coverage_part LIMIT 100
+  - q: "Which claims have a pre-existing condition fact with confidence of at least 0.8?"
+    cypher: |
+      MATCH (cl:Claim)-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(ch:Chunk)-[:YIELDS]->(x:ExtractedFact {factType: 'pre_existing_condition'})
+      WHERE x.confidence >= 0.8
+      RETURN DISTINCT cl.id AS claim_id, x.confidence AS confidence, ch.text AS evidence_text ORDER BY confidence DESC LIMIT 100
+  - q: "Which kinds of party received payments over 10000, and who were they?"
+    cypher: |
+      MATCH (pay:Payment)-[:PAYEE]->(party:Party) WHERE pay.amount > 10000
+      RETURN [l IN labels(party) WHERE l <> 'Party'][0] AS party_type, party.name AS payee, count(pay) AS payments, sum(pay.amount) AS total
+      ORDER BY total DESC LIMIT 100
+  - q: "How is attorney ATT-0001 connected to provider MP-0001?"
+    neo4j_only: true        # shortestPath inside MATCH: valid in Neo4j, not supported by the embedded test engine
+    cypher: |
+      MATCH (a:Attorney {id: 'ATT-0001'}), (m:MedicalProvider {id: 'MP-0001'})
+      MATCH path = shortestPath((a)-[*..6]-(m))
+      RETURN [n IN nodes(path) | coalesce(n.name, n.id)] AS path_nodes, [r IN relationships(path) | type(r)] AS path_relationships, length(path) AS hops
+      LIMIT 1

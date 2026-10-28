@@ -1,0 +1,67 @@
+# Executable competency questions. Each runs against the graph and is compared with the SQL ground truth
+# computed independently by data/generate_gl_data.py (database/gl_ground_truth.json).
+# Parameters ($name) are used here by the TEST RUNNER only; the NLQ lane inlines literals.
+tests:
+  - id: CQ1
+    cypher: |
+      MATCH (a:Attorney)<-[:COUNSEL]-(l:Litigation) WHERE l.stage <> 'closed'
+      WITH a, count(DISTINCT l) AS open_suits WHERE open_suits > 10
+      MATCH (a)<-[:REPRESENTED_BY]-(c:Claimant)<-[:FOR_CLAIMANT]-(f:Feature)<-[:HAS_FEATURE]-(cl:Claim)
+      WHERE f.featureType = 'BI' AND f.status = 'open' AND cl.lob = 'CGL'
+      RETURN f.id AS feature_id, a.name AS attorney, open_suits ORDER BY feature_id
+  - id: CQ2
+    params: {since: "2024-09-30", n: 5}
+    cypher: |
+      MATCH (p:MedicalProvider)<-[:TREATED_BY]-(c:Claimant)-[:SUSTAINED]->(inj:Injury {injuryClass: 'soft_tissue'})
+      MATCH (c)<-[:FOR_CLAIMANT]-(:Feature)<-[:HAS_FEATURE]-(cl:Claim)-[:MADE_UNDER]->(:Policy)-[:ISSUED_TO]->(i:Insured)
+      WHERE cl.reportedDate >= $since
+      WITH p, count(DISTINCT cl) AS claims, count(DISTINCT i) AS insureds
+      WHERE claims > $n AND insureds > 1
+      RETURN p.id AS provider_id, p.name AS provider, claims, insureds ORDER BY claims DESC
+  - id: CQ3
+    params: {min_conf: 0.7}
+    cypher: |
+      MATCH (cl:Claim)-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(:Chunk)-[:YIELDS]->(x:ExtractedFact {factType: 'pre_existing_condition'})
+      WHERE x.confidence >= $min_conf
+      WITH DISTINCT cl
+      MATCH (cl)-[:HAS_FEATURE]->(f:Feature)-[:HAS_RESERVE]->(r:Reserve {type: 'indemnity'})
+      WITH cl, f, r ORDER BY r.validFrom
+      WITH cl, f, collect(r.amount) AS amts
+      RETURN cl.id AS claim_id, f.id AS feature_id, amts[0] AS initial_reserve, amts[size(amts) - 1] AS current_reserve,
+             amts[size(amts) - 1] - amts[0] AS development ORDER BY development DESC
+  - id: CQ4a    # as KNOWN on 2025-06-30, valid on 2025-06-30  -> 25,000 (the 60k correction had not been recorded yet)
+    params: {fid: "FEA-1001-BI", known_at: "2025-06-30", valid_at: "2025-06-30"}
+    cypher: &cq4 |
+      MATCH (:Feature {id: $fid})-[:HAS_RESERVE]->(r:Reserve {type: 'indemnity'})
+      WHERE r.recordedAt <= $known_at AND r.validFrom <= $valid_at
+      RETURN r.amount AS amount, r.validFrom AS valid_from, r.recordedAt AS recorded_at
+      ORDER BY r.validFrom DESC, r.recordedAt DESC LIMIT 1
+  - id: CQ4b    # as known on 2025-12-31 about 2025-06-30 -> 60,000 (backdated correction now known)
+    params: {fid: "FEA-1001-BI", known_at: "2025-12-31", valid_at: "2025-06-30"}
+    cypher: *cq4
+  - id: CQ4c    # current
+    params: {fid: "FEA-1001-BI"}
+    cypher: |
+      MATCH (:Feature {id: $fid})-[:HAS_RESERVE]->(r:Reserve {isCurrent: true}) RETURN r.amount AS amount
+  - id: CQ5
+    cypher: |
+      MATCH (loc:InsuredLocation)<-[:OCCURRED_AT]-(o:Occurrence)
+      WITH loc, count(DISTINCT o) AS occurrences WHERE occurrences >= 3
+      MATCH (loc)<-[:OCCURRED_AT]-(:Occurrence)<-[:ARISES_FROM]-(:Claim)-[:HAS_FEATURE]->(f:Feature)-[:TRIGGERS]->(cov:CoveragePart)
+      OPTIONAL MATCH (f)-[:HAS_PAYMENT]->(pay:Payment)
+      RETURN loc.id AS location_id, occurrences, collect(DISTINCT cov.code) AS coverage_parts, sum(pay.amount) AS paid
+      ORDER BY location_id
+  - id: CQ6
+    params: {payment_id: "__PAYMENT__"}
+    cypher: |
+      MATCH (p:Payment {id: $payment_id})-[:WAS_GENERATED_BY]->(prun:IngestionRun)
+      MATCH (p)<-[:HAS_PAYMENT]-(:Feature)<-[:HAS_FEATURE]-(:Claim)-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(:Chunk)-[:YIELDS]->(x:ExtractedFact)-[:WAS_GENERATED_BY]->(xrun:IngestionRun)
+      RETURN p.id AS payment_id, prun.sourceSystem AS payment_source, prun.id AS payment_run,
+             x.id AS fact_id, x.modelVersion AS extraction_model, xrun.id AS extraction_run, xrun.sourceSystem AS extraction_source
+      ORDER BY fact_id
+  - id: CQ7
+    cypher: |
+      MATCH (o:Occurrence)<-[:ARISES_FROM]-(t:Claim)-[:ADMINISTERED_BY]->(tpa:TPA)
+      MATCH (o)<-[:ARISES_FROM]-(c:Claim)-[:HANDLED_BY]->(adj:Adjuster)
+      WHERE c.id <> t.id AND NOT (c)-[:ADMINISTERED_BY]->(:TPA)
+      RETURN t.id AS tpa_claim, c.id AS carrier_claim, o.id AS occurrence_id ORDER BY occurrence_id
