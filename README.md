@@ -1,8 +1,8 @@
 # NLQ Intelligence 
 
 A natural-language query system over a Commercial General Liability (CGL) claims dataset that routes
-every question down one of two swim lanes — **SQL** for filters, aggregations and fixed-depth joins, or
-**Cypher / Knowledge Graph** for relationship-centric, multi-hop, unknown-depth questions — and answers
+every question down one of two swim lanes - **SQL** for filters, aggregations and fixed-depth joins, or
+**Cypher / Knowledge Graph** for relationship-centric, multi-hop, unknown-depth questions - and answers
 it against real data, with the full reasoning trail visible end to end.
 
 The point of this repo isn't "an LLM that writes SQL." It's a demonstration that a **governed ontology**
